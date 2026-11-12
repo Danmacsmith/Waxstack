@@ -112,7 +112,9 @@ export async function POST(req: Request) {
     }
     if (error instanceof Anthropic.APIError) {
       console.error("Claude API error", error.status, error.message);
-      return Response.json({ error: `Spine reading failed (${error.status}).` }, { status: 502 });
+      // 400s explain themselves (e.g. no credit left); pass the reason on.
+      const reason = error.status === 400 ? `: ${error.message.replace(/^\d+\s*/, "").slice(0, 300)}` : ".";
+      return Response.json({ error: `Spine reading failed (${error.status})${reason}` }, { status: 502 });
     }
     console.error(error);
     return Response.json({ error: "Spine reading failed." }, { status: 500 });
