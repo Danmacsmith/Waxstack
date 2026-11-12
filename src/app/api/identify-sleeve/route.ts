@@ -14,6 +14,9 @@ const Result = z.object({
   label: z.string().describe("Record label, or empty"),
   catno: z.string().describe("Catalogue number, or empty"),
   year: z.string().describe("Release year if printed or confidently known, else empty"),
+  description: z
+    .string()
+    .describe("A few words a collector would recognise it by when the text is unhelpful, e.g. 'White label, red ink stamp \"TEST PRESSING\", handwritten B1'. Empty if not needed."),
   confidence: z.enum(["high", "medium", "low"]),
 });
 
@@ -39,14 +42,17 @@ export async function POST(req: Request) {
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "low", format: betaZodOutputFormat(Result) },
-      system:
-        "You identify vinyl records from photos of their sleeves or labels for a collector's cataloguing app. Read what is printed. You may use your knowledge of well-known album covers, but never guess: leave a field empty rather than invent it.",
+      system: `You identify vinyl records for a collector's cataloguing app, from a photo of the sleeve or of the record's centre label.
+
+Many records arrive in plain paper sleeves, so the centre label is often all there is: printed labels, white labels, test pressings, promos with rubber stamps, stickers or handwriting. Read whatever is there, including stamps and handwriting, and use catalogue numbers and label names to work out the release if you know it.
+
+Never guess. Leave a field empty rather than invent it. When there is little or no readable text, fill in description with what makes this record recognisable (label colour, stamp, sticker, handwriting) so the collector can find it again.`,
       messages: [
         {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: "image/jpeg", data: body.image } },
-            { type: "text", text: "Which record is this?" },
+            { type: "text", text: "Which record is this? It may be the sleeve or the centre label." },
           ],
         },
       ],
@@ -61,6 +67,7 @@ export async function POST(req: Request) {
       label: r.label || undefined,
       catno: r.catno || undefined,
       year: parseInt(r.year, 10) || undefined,
+      description: r.description || undefined,
       confidence: r.confidence,
     });
   } catch (error) {
