@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Waxstack
 
-## Getting Started
+Photograph your record shelves, then type any record and watch its spine light up in the photo.
 
-First, run the development server:
+## How it works
+
+1. **Collection.** Import from Discogs (public collection, by username), a Discogs CSV export, or add records by hand. You can also skip this and build the list from what the spines say.
+2. **Shelves.** Add one photo per cube, shelf or crate, in the order you'd walk along them, and say how each is sorted.
+3. **Spine reading.** Each photo is cut into overlapping vertical strips, and Claude (`claude-opus-5-5`) reads every spine in each strip, returning its position and text. Claude is also given your collection list, so it picks the matching record instead of guessing from scratch. Spines Claude doesn't match get a fuzzy text match on the device.
+4. **Search.** Type an artist, title, label or catalogue number. A located record glows in its photo. If its spine couldn't be read but the section is sorted A–Z, Waxstack estimates its position from the nearest located neighbours, and works out whether you file solo artists by surname.
+5. **Fixing.** Tap any spine to confirm it, choose a different record, add it as a new record, or remove it. Confirmed spines survive a re-scan.
+
+Everything (records, photos, positions) is stored in the browser's IndexedDB on the device. The server only holds the API keys and forwards requests to Claude and Discogs. Collection → Backup downloads and restores everything as one file.
+
+## Run it locally
 
 ```bash
+cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. To try it on your phone on the same Wi‑Fi, use your Mac's local IP address (camera capture needs HTTPS on most phones, so deploying is easier; see below).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy (Vercel)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Push this folder to a GitHub repo.
+2. Import it at vercel.com/new (framework: Next.js, no settings to change).
+3. Add the environment variable `ANTHROPIC_API_KEY` (and optionally `DISCOGS_TOKEN`).
+4. Deploy. Open the URL on your phone and use "Add to Home Screen" to get it as an app.
 
-## Learn More
+## Code map
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/page.tsx`: Find (search + heat map)
+- `src/app/shelves/`: section list, add-a-photo flow, section detail with spine fixing
+- `src/app/collection/page.tsx`: imports, manual add, backup
+- `src/app/api/read-spines/route.ts`: Claude vision call (structured output)
+- `src/app/api/discogs/route.ts`: Discogs collection proxy
+- `src/lib/scan.ts`: strips → Claude → merge duplicates → match → save
+- `src/lib/match.ts`: fuzzy matching, search scoring, A–Z position estimates
+- `src/components/ShelfView.tsx`: photo with heat-map overlay
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Not built yet (ideas for next)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Accounts and cloud sync (Supabase) so a collection works across devices
+- Re-scan diff: photograph a section again and see what moved
+- Wrapping as a native iOS/Android app
+- DJ mode (BPM/key) from the Manus version
